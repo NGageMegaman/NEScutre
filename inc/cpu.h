@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "mem.h"
 using namespace std;
 
 enum instr {
@@ -61,24 +62,25 @@ enum instr {
     NOP = 0xea
 };
 
-class cpu {
+class Cpu {
     public:
-	cpu();
-	void execute(uint8_t opcode);
-	uint8_t read_operand(uint8_t opcode);
-	uint8_t read_operand_indexed_indirect();
-	uint8_t read_operand_zero_page();
-	uint8_t read_operand_imm();
-	uint8_t read_operand_absolute();
-	uint8_t read_operand_indirect();
-	uint8_t read_operand_relative();
-	uint8_t read_operand_indirect_indexed();
-	uint8_t read_operand_zero_page_indexed_x();
-	uint8_t read_operand_absolute_indexed_x();
-	uint8_t read_operand_absolute_indexed_y();
-	void ADC_execute(uint8_t operand);
-	void chivato(uint8_t operand);
+	Cpu();
+	void execute();
+	uint16_t read_operand(uint8_t opcode);
+	uint16_t read_operand_indexed_indirect();
+	uint16_t read_operand_zero_page();
+	uint16_t read_operand_imm();
+	uint16_t read_operand_absolute();
+	uint16_t read_operand_indirect();
+	uint16_t read_operand_relative();
+	uint16_t read_operand_indirect_indexed();
+	uint16_t read_operand_zero_page_indexed_x();
+	uint16_t read_operand_absolute_indexed_x();
+	uint16_t read_operand_absolute_indexed_y();
+	void ADC_execute(uint16_t operand);
+	void chivato(uint16_t operand);
     private:
-	uint8_t regA, regX, regY, regP, regCP;
-	uint16_t regSP;
+	Mem mem;
+	uint8_t regA, regX, regY, regP;
+	uint16_t regCP, regSP;
 };

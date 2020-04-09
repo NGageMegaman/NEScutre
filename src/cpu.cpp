@@ -3,14 +3,15 @@
 #include "cpu.h"
 using namespace std;
 
-cpu::cpu() {
+Cpu::Cpu() {
     regX = regY = regA = regP = regCP = 0x00;
     regSP = 0x0000;
 }
 
-void cpu::execute(uint8_t opcode) {
+void Cpu::execute() {
+    uint8_t opcode = mem.read_byte(regCP);
     cout << "interpretamos instruccion " << (int) opcode << endl;
-    uint8_t operand = read_operand(opcode);
+    uint16_t operand = read_operand(opcode);
 
     switch (opcode) {
 	case ADC1:
@@ -43,7 +44,7 @@ void cpu::execute(uint8_t opcode) {
     }
 }
 
-uint8_t cpu::read_operand(uint8_t opcode) {
+uint16_t Cpu::read_operand(uint8_t opcode) {
     //obtenemos la columna de la matriz de opcodes
     uint8_t column = opcode & 0x1f;
     switch (column) {
@@ -112,60 +113,106 @@ uint8_t cpu::read_operand(uint8_t opcode) {
     }
 }
 
-uint8_t cpu::read_operand_indexed_indirect() {
+uint16_t Cpu::read_operand_indexed_indirect() {
+    uint8_t operand;
+    uint8_t d = mem.read_byte(regCP + 0x0001);
+    operand = mem.read_byte(uint16_t (0x00FF & (d+regX)));
     regCP += 0x02;
-    return 0x01;
+    return operand;
 }
 
-uint8_t cpu::read_operand_zero_page() {
+uint16_t Cpu::read_operand_zero_page() {
+    uint8_t operand;
+    uint16_t address;
+    address = 0x0000;
+    uint8_t d = mem.read_byte(regCP + 0x0001);
+    operand = mem.read_byte(address | (0x00FF & d));
     regCP += 0x02;
-    return 0x02;
+    return operand;
 }
 
-uint8_t cpu::read_operand_imm() {
+uint16_t Cpu::read_operand_imm() {
+    uint8_t operand;
+    operand = mem.read_byte(regCP + 0x0001);
     regCP += 0x02;
-    return 0x03;
+    return operand;
 }
 
-uint8_t cpu::read_operand_absolute() {
+uint16_t Cpu::read_operand_absolute() {
+    uint16_t operand;
+    uint8_t high, low;
+    low = mem.read_byte(regCP + 0x0001);
+    high = mem.read_byte(regCP + 0x0002);
+    operand = (high << 8) | low;
     regCP += 0x03;
-    return 0x04;
+    return operand;
 }
 
-uint8_t cpu::read_operand_indirect() {
+uint16_t Cpu::read_operand_indirect() {
+    uint16_t operand;
+    uint8_t high, low;
+    low = mem.read_byte(regCP + 0x0001);
+    high = mem.read_byte(regCP + 0x0002);
+    operand = mem.read_byte((high << 8) | low);
     regCP += 0x03;
-    return 0x05;
+    return operand;
 }
 
-uint8_t cpu::read_operand_relative() {
+uint16_t Cpu::read_operand_relative() {
+    uint16_t operand;
+    operand = mem.read_byte(regCP + 0x0001);
     regCP += 0x02;
-    return 0x06;
+    operand += regCP;
+    return operand;
 }
 
-uint8_t cpu::read_operand_indirect_indexed() {
+uint16_t Cpu::read_operand_indirect_indexed() {
+    uint16_t operand;
+    uint8_t high, low;
+    low = mem.read_byte(regCP + 0x0001);
+    high = mem.read_byte(regCP + 0x0002);
+    operand = mem.read_byte((high << 8) | low);
+    operand += regY;
     regCP += 0x02;
-    return 0x07;
+    return operand;
 }
 
-uint8_t cpu::read_operand_zero_page_indexed_x() {
+uint16_t Cpu::read_operand_zero_page_indexed_x() {
+    uint8_t operand;
+    uint16_t address;
+    address = 0x0000;
+    uint8_t d = mem.read_byte(regCP + 0x0001);
+    operand = mem.read_byte(address | (0x00FF & (d+regX)));
+    regCP += 0x02;
+    return operand;
+}
+
+uint16_t Cpu::read_operand_absolute_indexed_x() {
+    uint16_t operand;
+    uint8_t high, low;
+    low = mem.read_byte(regCP + 0x0001);
+    high = mem.read_byte(regCP + 0x0002);
+    operand = (high << 8) | low;
+    operand += regX;
     regCP += 0x03;
-    return 0x08;
+    return operand;
 }
 
-uint8_t cpu::read_operand_absolute_indexed_x() {
-    regCP += 0x02;
-    return 0x09;
-}
-
-uint8_t cpu::read_operand_absolute_indexed_y() {
+uint16_t Cpu::read_operand_absolute_indexed_y() {
+    uint16_t operand;
+    uint8_t high, low;
+    low = mem.read_byte(regCP + 0x0001);
+    high = mem.read_byte(regCP + 0x0002);
+    operand = (high << 8) | low;
+    operand += regY;
     regCP += 0x03;
-    return 0x0a;
+    return operand;
 }
 
-void cpu::ADC_execute(uint8_t operand) {
+void Cpu::ADC_execute(uint16_t operand) {
     chivato(operand);
 }
 
-void cpu::chivato(uint8_t operand) {
+void Cpu::chivato(uint16_t operand) {
     cout << "ejecutada la instruccion ADC con operando " << (int) operand << endl;
 }

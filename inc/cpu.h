@@ -1,86 +1,104 @@
 #include <stdint.h>
 #include "mem.h"
+#include "clock.h"
 using namespace std;
 
-enum instr {
-    BRK = 0x00,
-    PHP = 0x08,
-    BPL = 0x10,
-    CLC = 0x18,
-    ORA = 0x01,
-    ASL = 0x06,
-    JSR = 0x20,
-    BIT = 0x24,
-    PLP = 0x28,
-    BMI = 0x30,
-    SEC = 0x38,
-    AND = 0x21,
-    ROL = 0x26,
-    RTI = 0x40,
-    PHA = 0x48,
-    JMP = 0x4c, JMP2 = 0x6c,
-    BVC = 0x50,
-    CLI = 0x58,
-    EOR = 0x41,
-    LSR = 0x46,
-    RTS = 0x60,
-    PLA = 0x68,
-    BVS = 0x70,
-    SEI = 0x78,
-    ADC1 = 0x61, ADC2 = 0x65, ADC3 = 0x69, ADC4 = 0x6d,
-    ADC5 = 0x71, ADC6 = 0x75, ADC7 = 0x79, ADC8 = 0x7d,
-    ROR = 0x66,
-    STY = 0x84,
-    DEY = 0x88,
-    BCC = 0x90,
-    TYA = 0x98,
-    STA = 0x81,
-    STX = 0x86,
-    TXA = 0x8a,
-    TXS = 0x9a,
-    LDY = 0xa0,
-    TAY = 0xa8,
-    BCS = 0xb0,
-    CLV = 0xb8,
-    LDA = 0xa1,
-    LDX = 0xa2,
-    TAX = 0xaa,
-    TSX = 0xba,
-    CPY = 0xc0,
-    INY = 0xc8,
-    BNE = 0xd0,
-    CLD = 0xd8,
-    CMP = 0xc1,
-    DEC = 0xc6,
-    DEX = 0xca,
-    CPX = 0xe0,
-    INX = 0xe8,
-    BEQ = 0xf0,
-    SED = 0xf8,
-    SBC = 0xe1,
-    INC = 0xe6,
-    NOP = 0xea
+struct ProcStatus {
+    bool C; // Carry Flag
+    bool Z; // Zero Flag
+    bool I; // Interrupt Disable
+    bool D; // Decimal Mode Flag
+    bool B; // Break Command
+    bool V; // Overflow Flag
+    bool N; // Negative Flag
 };
 
 class Cpu {
     public:
 	Cpu();
 	void execute();
-	uint16_t read_operand(uint8_t opcode);
-	uint16_t read_operand_indexed_indirect();
-	uint16_t read_operand_zero_page();
-	uint16_t read_operand_imm();
-	uint16_t read_operand_absolute();
-	uint16_t read_operand_indirect();
-	uint16_t read_operand_relative();
-	uint16_t read_operand_indirect_indexed();
-	uint16_t read_operand_zero_page_indexed_x();
-	uint16_t read_operand_absolute_indexed_x();
-	uint16_t read_operand_absolute_indexed_y();
-	void ADC_execute(uint16_t operand);
-	void chivato(uint16_t operand);
+	void add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mode);
+	uint32_t read_operand(uint8_t opcode, addr_mode_t *addr_mode);
+	uint32_t read_operand_indexed_indirect(addr_mode_t *addr_mode);
+	uint32_t read_operand_zero_page(addr_mode_t *addr_mode);
+	uint32_t read_operand_imm(addr_mode_t *addr_mode);
+	uint32_t read_operand_absolute(addr_mode_t *addr_mode);
+	uint32_t read_operand_indirect(addr_mode_t *addr_mode);
+	uint32_t read_operand_relative(addr_mode_t *addr_mode);
+	uint32_t read_operand_indirect_indexed(addr_mode_t *addr_mode);
+	uint32_t read_operand_zero_page_indexed_x(addr_mode_t *addr_mode);
+	uint32_t read_operand_absolute_indexed_x(addr_mode_t *addr_mode);
+	uint32_t read_operand_absolute_indexed_y(addr_mode_t *addr_mode);
+	void ADC_execute(uint8_t operand);
+	void AND_execute(uint8_t operand);
+	void ASL_mem_execute(uint16_t address, uint8_t operand);
+	void ASL_A_execute();
+	void BCC_execute(uint16_t address);
+	void BCS_execute(uint16_t address);
+	void BEQ_execute(uint16_t address);
+	void BIT_execute(uint8_t operand);
+	void BMI_execute(uint16_t address);
+	void BNE_execute(uint16_t address);
+	void BPL_execute(uint16_t address);
+	void BRK_execute();
+	void BVC_execute(uint16_t address);
+	void BVS_execute(uint16_t address);
+	void CLC_execute();
+	void CLD_execute();
+	void CLI_execute();
+	void CLV_execute();
+	void CMP_execute(uint8_t operand);
+	void CPX_execute(uint8_t operand);
+	void CPY_execute(uint8_t operand);
+	void DEC_execute(uint16_t address, uint8_t operand);
+	void DEX_execute();
+	void DEY_execute();
+	void EOR_execute(uint8_t operand);
+	void INC_execute(uint16_t address, uint8_t operand);
+	void INX_execute();
+	void INY_execute();
+	void JMP_execute(uint16_t address);
+	void JSR_execute(uint16_t address);
+	void LDA_execute(uint8_t operand);
+	void LDX_execute(uint8_t operand);
+	void LDY_execute(uint8_t operand);
+	void LSR_mem_execute(uint16_t address, uint8_t operand);
+	void LSR_A_execute();
+	void NOP_execute();
+	void ORA_execute(uint8_t operand);
+	void PHA_execute();
+	void PHP_execute();
+	void PLA_execute();
+	void PLP_execute();
+	void ROL_mem_execute(uint16_t address, uint8_t operand);
+	void ROL_A_execute();
+	void ROR_mem_execute(uint16_t address, uint8_t operand);
+	void ROR_A_execute();
+	void RTI_execute();
+	void RTS_execute();
+	void SBC_execute(uint8_t operand);
+	void SEC_execute();
+	void SED_execute();
+	void SEI_execute();
+	void STA_execute(uint16_t address);
+	void STX_execute(uint16_t address);
+	void STY_execute(uint16_t address);
+	void TAX_execute();
+	void TAY_execute();
+	void TSX_execute();
+	void TXA_execute();
+	void TXS_execute();
+	void TYA_execute();
+
+	void NMI_execute();
+	void pushStack(uint8_t data);
+	uint8_t pullStack();
+	void debug_dump(uint8_t inst);
+	void endExecution();
+	Clock *clock;
     private:
 	Mem mem;
-	uint8_t regA, regX, regY, regP;
-	uint16_t regCP, regSP;
+	uint8_t regA, regX, regY;
+	uint16_t regPC, regSP;
+	ProcStatus regP;
 };

@@ -245,7 +245,7 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == ROR3 ||
 		opcode == ROR4 ||
 		opcode == ROR5) {
-		clock->cycles += 2;
+		    clock->cycles += 2;
 	    }
 	    break;
 	case ZERO_PAGE_X:
@@ -278,7 +278,7 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == ROR3 ||
 		opcode == ROR4 ||
 		opcode == ROR5) {
-		clock->cycles += 2;
+		    clock->cycles += 2;
 	    }
 	    break;
 	case ABSOLUTE:
@@ -312,10 +312,10 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == ROR3 ||
 		opcode == ROR4 ||
 		opcode == ROR5) {
-		clock->cycles += 2;
+		    clock->cycles += 2;
 	    }
 	    if (opcode == JMP1 || opcode == JMP2) {
-		clock->cycles -= 1;
+		    clock->cycles -= 1;
 	    }
 	case ABSOLUTE_X:
 	    clock->cycles += 4;
@@ -323,7 +323,7 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == STA3 || opcode == STA4 ||
 		opcode == STA5 || opcode == STA6 ||
 		opcode == STA7) {
-		clock->cycles += 1;
+		    clock->cycles += 1;
 	    }
 	    else if (opcode == ASL1 ||
 		opcode == ASL2 ||
@@ -354,11 +354,11 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == ROR3 ||
 		opcode == ROR4 ||
 		opcode == ROR5) {
-		clock->cycles += 3;
+		    clock->cycles += 3;
 	    }
 	    else if ((address & 0x00FF) == 0xFF) {
-		//Page crossing
-		clock->cycles += 1;
+		    //Page crossing
+		    clock->cycles += 1;
 	    }
 	    break;
 	case ABSOLUTE_Y:
@@ -367,11 +367,11 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == STA3 || opcode == STA4 ||
 		opcode == STA5 || opcode == STA6 ||
 		opcode == STA7) {
-		clock->cycles += 1;
+		    clock->cycles += 1;
 	    }
 	    else if ((address & 0x00FF) == 0xFF) {
-		//Page crossing
-		clock->cycles += 1;
+		    //Page crossing
+		    clock->cycles += 1;
 	    }
 	    break;
 	case INDIRECT_X:
@@ -383,11 +383,11 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 		opcode == STA3 || opcode == STA4 ||
 		opcode == STA5 || opcode == STA6 ||
 		opcode == STA7) {
-		clock->cycles += 1;
+		    clock->cycles += 1;
 	    }
 	    else if ((address & 0x00FF) == 0xFF) {
-		//Page crossing
-		clock->cycles += 1;
+		    //Page crossing
+		    clock->cycles += 1;
 	    }
 	    break;
 	case RELATIVE:
@@ -399,16 +399,16 @@ void Cpu::add_clock_cycles(uint8_t opcode, uint16_t address, addr_mode_t addr_mo
 	case IMPLIED:
 	    clock->cycles += 2;
 	    if (opcode == PHA || opcode == PHP) {
-		clock->cycles += 1;
+		    clock->cycles += 1;
 	    }
 	    else if (opcode == PLA || opcode == PLP) {
-		clock->cycles += 2;
+		    clock->cycles += 2;
 	    }
 	    else if (opcode == RTI || opcode == RTS) {
-		clock->cycles += 4;
+		    clock->cycles += 4;
 	    }
 	    else if (opcode == BRK) {
-		clock->cycles += 5;
+		    clock->cycles += 5;
 	    }
 	    break;
 	default:
@@ -424,10 +424,15 @@ uint32_t Cpu::read_operand(uint8_t opcode, addr_mode_t *addr_mode) {
     uint8_t column = opcode & 0x1f;
     switch (column) {
 	case 0x00:
-	    if (opcode == JSR) 
-		return read_operand_absolute(addr_mode);
-	    else if (opcode != BRK && opcode != RTI && opcode != RTS) 
-		return read_operand_imm(addr_mode);
+	    if (opcode == JSR) {
+		    return read_operand_absolute(addr_mode);
+        }
+	    else if (opcode != BRK && opcode != RTI && opcode != RTS) {
+		    return read_operand_imm(addr_mode);
+        }
+        else { 
+            return 0;
+        }
 	    break;
 	case 0x01:
 	    return read_operand_indexed_indirect(addr_mode);
@@ -446,8 +451,9 @@ uint32_t Cpu::read_operand(uint8_t opcode, addr_mode_t *addr_mode) {
 	    break;
 	case 0x0c:
 	    if (opcode == JMP2) 
-		return read_operand_indirect(addr_mode);
-	    else return read_operand_absolute(addr_mode);
+		    return read_operand_indirect(addr_mode);
+	    else 
+            return read_operand_absolute(addr_mode);
 	    break;
 	case 0x0d:
 	    return read_operand_absolute(addr_mode);
@@ -481,14 +487,13 @@ uint32_t Cpu::read_operand(uint8_t opcode, addr_mode_t *addr_mode) {
 	    break;
 	case 0x1e:
 	    if (opcode == LDX5) 
-		return read_operand_absolute_indexed_y(addr_mode);
+		    return read_operand_absolute_indexed_y(addr_mode);
 	    else 
-		return read_operand_absolute_indexed_x(addr_mode);
+		    return read_operand_absolute_indexed_x(addr_mode);
 	    break;
 	default:
 	    regPC = regPC + 1; //No operand
-	    return 0x00;
-	    break;
+	    return 0;
     }
 }
 

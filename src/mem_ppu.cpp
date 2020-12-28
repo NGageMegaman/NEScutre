@@ -7,7 +7,6 @@
 using namespace std;
 
 Mem_ppu::Mem_ppu() {
-    char ram[PPU_RAM_SIZE];
 }
 
 uint8_t Mem_ppu::read_byte(uint16_t addr) {
@@ -79,7 +78,18 @@ void Mem_ppu::load_rom(char *name) {
     ram[0x3f01] = 127;
     ram[0x3f02] = 191;
     ram[0x3f03] = 255;
-
+    ram[0x3f04] = 63;
+    ram[0x3f05] = 127;
+    ram[0x3f06] = 191;
+    ram[0x3f07] = 255;
+    ram[0x3f08] = 63;
+    ram[0x3f09] = 127;
+    ram[0x3f0a] = 191;
+    ram[0x3f0b] = 255;
+    ram[0x3f0c] = 63;
+    ram[0x3f0d] = 127;
+    ram[0x3f0e] = 191;
+    ram[0x3f0f] = 255;
 
     rom.close();
 }
@@ -106,11 +116,12 @@ uint8_t Mem_ppu::read_PPUDATA() {
     uint8_t result = PPUDATA;
     PPUDATA = ram[PPUADDR];
     if (((PPUCTRL >> 1) & 1) == 0) {
-	PPUADDR += 1;
+	    PPUADDR += 1;
     }
     else {
-	PPUADDR += 32;
+	    PPUADDR += 32;
     }
+    return result;
 }
 
 void Mem_ppu::write_PPUDATA(uint8_t data) {

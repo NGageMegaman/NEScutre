@@ -96,8 +96,8 @@ class Cpu {
 	void debug_dump(uint8_t inst);
 	void endExecution();
 	Clock *clock;
-    private:
 	Mem mem;
+    private:
 	uint8_t regA, regX, regY;
 	uint16_t regPC, regSP;
 	ProcStatus regP;

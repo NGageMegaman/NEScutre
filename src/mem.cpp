@@ -7,7 +7,6 @@
 using namespace std;
 
 Mem::Mem() {
-    char ram[RAM_SIZE];
     //Mem init with 0s
     for (int i = 0; i<=RAM_SIZE; ++i) {
 	ram[i] = 0x00;
@@ -17,7 +16,10 @@ Mem::Mem() {
 }
 
 uint8_t Mem::read_byte(uint16_t addr) {
-    return ram[addr];
+    if (addr == 0x2007)
+        return mem_ppu->read_PPUDATA();
+    else
+        return ram[addr];
 }
 
 uint16_t Mem::read_word(uint16_t addr) {
@@ -31,25 +33,25 @@ uint16_t Mem::read_word(uint16_t addr) {
 
 void Mem::write_byte(uint16_t addr, uint8_t data) {
     if (addr == 0x2000)
-	ppu->PPUCTRL = data;
-    else if (addr == 0x2001)
-	ppu->PPUMASK = data;
-    else if (addr == 0x2002)
-	ppu->PPUSTATUS = data;
-    else if (addr == 0x2003)
-	ppu->OAMADDR = data;
-    else if (addr == 0x2004)
-	ppu->OAMDATA = data;
-    else if (addr == 0x2005)
-	ppu->PPUSCROLL = data;
+	mem_ppu->write_PPUCTRL(data);
+    //else if (addr == 0x2001)
+	    //ppu->PPUMASK = data;
+    //else if (addr == 0x2002)
+	    //ppu->PPUSTATUS = data;
+    //else if (addr == 0x2003)
+	    //ppu->OAMADDR = data;
+    //else if (addr == 0x2004)
+	    //ppu->OAMDATA = data;
+    //else if (addr == 0x2005)
+	    //ppu->PPUSCROLL = data;
     else if (addr == 0x2006)
-	ppu->PPUADDR = data;
+	    mem_ppu->write_PPUADDR(data);
     else if (addr == 0x2007)
-	ppu->PPUDATA = data;
-    else if (addr == 0x4014)
-	ppu->OAMDMA = data;
+	    mem_ppu->write_PPUDATA(data);
+    //else if (addr == 0x4014)
+	    //ppu->OAMDMA = data;
     else
-	ram[addr] = data;
+	    ram[addr] = data;
 }
 
 void Mem::load_rom(char *name) {
@@ -83,7 +85,7 @@ void Mem::load_rom(char *name) {
     rom.read((char *)ram, HEADER_SIZE);
     
     int x = ram[4];
-    int y = ram[5];
+    //int y = ram[5];
 
     /* 3. PRG ROM data */
     rom.read((char *)ram+HEADER_SIZE, PRG_ROM_SIZE*x);

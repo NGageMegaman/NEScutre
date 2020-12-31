@@ -22,7 +22,7 @@ class Cpu {
 	uint32_t read_operand_indexed_indirect(addr_mode_t *addr_mode);
 	uint32_t read_operand_zero_page(addr_mode_t *addr_mode);
 	uint32_t read_operand_imm(addr_mode_t *addr_mode);
-	uint32_t read_operand_absolute(addr_mode_t *addr_mode);
+	uint32_t read_operand_absolute(addr_mode_t *addr_mode, uint8_t opcode);
 	uint32_t read_operand_indirect(addr_mode_t *addr_mode);
 	uint32_t read_operand_relative(addr_mode_t *addr_mode);
 	uint32_t read_operand_indirect_indexed(addr_mode_t *addr_mode);

@@ -14,8 +14,10 @@ class Ppu {
     public:
 	Ppu();
 	void drawPixel(Display *di, Window wi, GC gc, int x, int y, int color);
-	void draw();
+	void draw(int n_scanline);
+	void drawSprites(int n_scanline);
 	void vblank();
+	void initColors();
 	Cpu *cpu;
 	Mem_ppu *mem_ppu;
     private:
@@ -23,4 +25,5 @@ class Ppu {
 	int sc;
 	Window ro, wi;
 	GC gc;
+	uint32_t colors[64];
 };

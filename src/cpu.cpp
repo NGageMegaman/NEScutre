@@ -422,10 +422,11 @@ uint32_t Cpu::read_operand(uint8_t opcode, addr_mode_t *addr_mode) {
     *addr_mode = IMPLIED;
     //obtenemos la columna de la matriz de opcodes
     uint8_t column = opcode & 0x1f;
+    uint8_t row = opcode & 0xe0;
     switch (column) {
 	case 0x00:
 	    if (opcode == JSR) {
-		    return read_operand_absolute(addr_mode);
+		    return read_operand_absolute(addr_mode, opcode);
         }
 	    else if (opcode != BRK && opcode != RTI && opcode != RTS) {
 		    return read_operand_imm(addr_mode);
@@ -436,6 +437,12 @@ uint32_t Cpu::read_operand(uint8_t opcode, addr_mode_t *addr_mode) {
 	    break;
 	case 0x01:
 	    return read_operand_indexed_indirect(addr_mode);
+	    break;
+	case 0x02:
+	    if (row >= 0x80)
+		return read_operand_imm(addr_mode);
+	    else
+		return 0;
 	    break;
 	case 0x04:
 	    return read_operand_zero_page(addr_mode);
@@ -453,13 +460,13 @@ uint32_t Cpu::read_operand(uint8_t opcode, addr_mode_t *addr_mode) {
 	    if (opcode == JMP2) 
 		    return read_operand_indirect(addr_mode);
 	    else 
-            return read_operand_absolute(addr_mode);
+            return read_operand_absolute(addr_mode, opcode);
 	    break;
 	case 0x0d:
-	    return read_operand_absolute(addr_mode);
+	    return read_operand_absolute(addr_mode, opcode);
 	    break;
 	case 0x0e:
-	    return read_operand_absolute(addr_mode);
+	    return read_operand_absolute(addr_mode, opcode);
 	    break;
 	case 0x10:
 	    return read_operand_relative(addr_mode);
@@ -510,13 +517,13 @@ uint32_t Cpu::read_operand_indexed_indirect(addr_mode_t *addr_mode) {
 
 uint32_t Cpu::read_operand_zero_page(addr_mode_t *addr_mode) {
     uint8_t operand;
-    uint16_t address;
-    address = 0x0000;
+    uint16_t address = 0;
     uint8_t d = mem.read_byte(regPC + 0x0001);
-    operand = mem.read_byte(address | (0x00FF & d));
+    address = address | (0x00ff & d);
+    operand = mem.read_byte(address);
     regPC += 0x02;
     *addr_mode = ZERO_PAGE;
-    return (d << 16) | operand;
+    return (address << 16) | operand;
 }
 
 uint32_t Cpu::read_operand_imm(addr_mode_t *addr_mode) {
@@ -527,34 +534,42 @@ uint32_t Cpu::read_operand_imm(addr_mode_t *addr_mode) {
     return operand;
 }
 
-uint32_t Cpu::read_operand_absolute(addr_mode_t *addr_mode) {
+uint32_t Cpu::read_operand_absolute(addr_mode_t *addr_mode, uint8_t opcode) {
     uint16_t operand;
     uint8_t high, low;
     low = mem.read_byte(regPC + 0x0001);
     high = mem.read_byte(regPC + 0x0002);
     uint16_t address = (high << 8) | low;
-    operand = mem.read_byte(address);
     regPC += 0x03;
     *addr_mode = ABSOLUTE;
-    return (address << 16) | operand;
+    //These opcodes don't need an operand
+    //We avoid lateral effects on ppu regs reads
+    if (!(opcode == 0x20 || opcode == 0x8c || opcode == 0x4c || opcode == 0x0c || opcode ==
+	0x8d || opcode == 0x8e))
+	operand = mem.read_byte(address);
+    else
+	operand = 0;
+    return address << 16 | operand;
 }
 
 uint32_t Cpu::read_operand_indirect(addr_mode_t *addr_mode) {
     uint16_t pointer;
+    uint16_t address;
     uint8_t high, low, operand;
+    operand = 0;
     low = mem.read_byte(regPC + 0x0001);
     high = mem.read_byte(regPC + 0x0002);
-    pointer = mem.read_word((high << 8) | low);
-    operand = mem.read_byte(pointer);
+    pointer = (high << 8) | low;
+    address = mem.read_word(pointer);
     regPC += 0x03;
     *addr_mode = INDIRECT;
-    return (pointer << 16) | operand;
+    return (address << 16) | operand;
 }
 
 uint32_t Cpu::read_operand_relative(addr_mode_t *addr_mode) {
-    uint8_t operand;
+    int8_t operand;
     operand = mem.read_byte(regPC+ 0x0001);
-    uint16_t signExtOperand = (operand << 8) >> 8;
+    int16_t signExtOperand = (operand << 8) >> 8;
     regPC += 0x02;
     signExtOperand += regPC;
     *addr_mode = RELATIVE;
@@ -566,10 +581,10 @@ uint32_t Cpu::read_operand_indirect_indexed(addr_mode_t *addr_mode) {
     uint8_t operand;
     uint8_t high, low;
     low = mem.read_byte(regPC + 0x0001);
-    high = mem.read_byte(regPC + 0x0002);
+    high = 0x00;
     address = mem.read_word((high << 8) | low);
+    address += (uint16_t) regY;
     operand = mem.read_byte(address);
-    operand += regY;
     regPC += 0x02;
     *addr_mode = INDIRECT_Y;
     return (address << 16) | operand;
@@ -580,7 +595,7 @@ uint32_t Cpu::read_operand_zero_page_indexed_x(addr_mode_t *addr_mode) {
     uint16_t address;
     uint8_t d = mem.read_byte(regPC + 0x0001);
     address = (0x0FF & (d+regX));
-    operand = mem.read_byte(address | (0x00FF & (d+regX)));
+    operand = mem.read_byte(address);
     regPC += 0x02;
     *addr_mode = ZERO_PAGE_X;
     return (address << 16) | operand;
@@ -594,7 +609,7 @@ uint32_t Cpu::read_operand_absolute_indexed_x(addr_mode_t *addr_mode) {
     high = mem.read_byte(regPC + 0x0002);
     address = (high << 8) | low;
     address += regX;
-    operand = mem.read_word(address);
+    operand = mem.read_byte(address);
     regPC += 0x03;
     *addr_mode = ABSOLUTE_X;
     return (address << 16) | operand;
@@ -617,19 +632,19 @@ uint32_t Cpu::read_operand_absolute_indexed_y(addr_mode_t *addr_mode) {
 void Cpu::ADC_execute(uint8_t operand) {
     // Add with carry
     // A,Z,C,N = A+M+C
-    uint16_t result = regA + operand + regP.C;
+    uint8_t result = regA + operand + (uint8_t)regP.C;
     bool signResult, signRegA, signOperand;
 
     signResult = (result >> 7) & 1; //Mask to eliminate the carry
-    signRegA = regA >> 7;
-    signOperand = operand >> 7;
+    signRegA = (regA >> 7) & 1;
+    signOperand = (operand >> 7) & 1;
 
-    regA = result;
-
-    regP.Z = (result & 0x00FF) == 0;
-    regP.C = result >> 8;
+    regP.Z = result == 0;
+    regP.C = (result < regA) || (result < operand);
     regP.V = ((signRegA == signOperand) && (signResult != signRegA));
     regP.N = signResult;
+
+    regA = result;
 }
 
 void Cpu::AND_execute(uint8_t operand) {
@@ -649,7 +664,7 @@ void Cpu::ASL_mem_execute(uint16_t address, uint8_t operand) {
 
     uint16_t result = operand << 1;
 
-    mem.write_byte(address, operand);
+    mem.write_byte(address, (uint8_t) operand);
 
     regP.Z = (result & 0x00FF) == 0;
     regP.C = result >> 8;
@@ -662,7 +677,7 @@ void Cpu::ASL_A_execute() {
 
     uint16_t result = regA << 1;
 
-    regA = result;
+    regA = (uint8_t) result;
 
     regP.Z = regA == 0;
     regP.C = result >> 8;
@@ -745,8 +760,8 @@ void Cpu::BRK_execute() {
 		(regP.C);
     
     //We push the PC and Processor Status into the stack
-    pushStack(lowPC);
     pushStack(highPC);
+    pushStack(lowPC);
     pushStack(procStat);
 
     //We set the PC to the interrupt vector and the Break command
@@ -800,9 +815,9 @@ void Cpu::CMP_execute(uint8_t operand) {
 
     uint8_t comp = regA - operand;
 
-    regP.C = (int8_t) regA > (int8_t) operand;
+    regP.C = regA >= operand;
     regP.Z = regA == operand;
-    regP.N = comp >> 7;
+    regP.N = (comp >> 7) & 1;
 }
 
 void Cpu::CPX_execute(uint8_t operand) {
@@ -811,7 +826,7 @@ void Cpu::CPX_execute(uint8_t operand) {
 
     uint8_t comp = regX - operand;
 
-    regP.C = (int8_t) regX > (int8_t) operand;
+    regP.C = regX >= operand;
     regP.Z = regX == operand;
     regP.N = comp >> 7;
 }   
@@ -822,8 +837,8 @@ void Cpu::CPY_execute(uint8_t operand) {
 
     uint8_t comp = regY - operand;
 
-    regP.C = (int8_t) regY > (int8_t) operand;
-    regP.Z = regX == operand;
+    regP.C = regY >= operand;
+    regP.Z = regY == operand;
     regP.N = comp >> 7;
 }
 
@@ -831,7 +846,7 @@ void Cpu::DEC_execute(uint16_t address, uint8_t operand) {
     //Decrement memory
     //M,Z,N = M-1
 
-    uint8_t result = operand-1;
+    int8_t result = operand-1;
     mem.write_byte(address, result);
 
     regP.Z = result == 0;
@@ -912,10 +927,10 @@ void Cpu::JMP_execute(uint16_t address) {
 
 void Cpu::JSR_execute(uint16_t address) {
     //Jump to subroutine
-    
-    uint16_t returnAddr = regPC - 4; //It must be PC - 1, and it already advanced 3
-    pushStack(returnAddr); //low
+
+    uint16_t returnAddr = regPC - 1; //Last byte of the instruction
     pushStack(returnAddr >> 8); //high
+    pushStack(returnAddr & 0x00ff); //low
     regPC = address;
 }
 
@@ -955,7 +970,7 @@ void Cpu::LSR_mem_execute(uint16_t address, uint8_t operand) {
 
     uint8_t result = operand >> 1;
 
-    mem.write_byte(address, operand);
+    mem.write_byte(address, result);
 
     regP.Z = result == 0;
     regP.C = operand & 1;
@@ -1034,45 +1049,47 @@ void Cpu::PLP_execute() {
 void Cpu::ROL_mem_execute(uint16_t address, uint8_t operand) {
     // Rotate left (memory contents)
 
-    uint16_t result = operand << 1 | regP.C;
+    uint8_t result = (operand << 1) | regP.C;
     mem.write_byte(address, result);
 
-    regP.C = result >> 8;
-    regP.Z = (result & 0x00ff) == 0;
+    regP.C = (operand >> 7) & 1;
+    regP.Z = result == 0;
     regP.N = (result >> 7) & 1;
 }
 
 void Cpu::ROL_A_execute() {
     // Rotate Left (accumulator)
 
-    uint16_t result = regA << 1 | regP.C;
-    regA = result;
+    uint8_t result = (regA << 1) | regP.C;
 
-    regP.C = result >> 8;
-    regP.Z = (result & 0x00ff) == 0;
+    regP.C = (regA >> 7) & 1;
+    regP.Z = result == 0;
     regP.N = (result >> 7) & 1;
+    
+    regA = result;
 }
 
 void Cpu::ROR_mem_execute(uint16_t address, uint8_t operand) {
     // Rotate right (memory contents)
 
-    uint8_t result = operand >> 1 | (regP.C << 7);
+    uint8_t result = ((operand >> 1) & 0x7f) | (regP.C << 7);
     mem.write_byte(address, result);
 
-    regP.C = result & 1;
+    regP.C = operand & 1;
     regP.Z = result == 0;
-    regP.N = result >> 7;
+    regP.N = (result >> 7) & 1;
 }
 
 void Cpu::ROR_A_execute() {
     // Rotate right (accumulator)
 
-    uint8_t result = regA >> 1 | (regP.C << 7);
-    regA = result;
+    uint8_t result = ((regA >> 1) & 0x7f) | (regP.C << 7);
 
-    regP.C = result & 1;
+    regP.C = regA & 1;
     regP.Z = result == 0;
-    regP.N = result >> 7;
+    regP.N = (result >> 7) & 1;
+
+    regA = result;
 }
 
 void Cpu::RTI_execute() {
@@ -1087,37 +1104,38 @@ void Cpu::RTI_execute() {
     regP.Z = (procStat >> 1) & 1;
     regP.C = procStat & 1;
 
-    uint8_t PC_high = pullStack();
     uint8_t PC_low = pullStack();
+    uint8_t PC_high = pullStack();
     regPC = (PC_high << 8) | PC_low;
 }
 
 void Cpu::RTS_execute() {
     // Return from subroutine
 
-    uint8_t PC_high = pullStack();
     uint8_t PC_low = pullStack();
+    uint8_t PC_high = pullStack();
     uint16_t PC = (PC_high << 8) | PC_low;
-    regPC = PC + 4; //It had PC - 1 and already advanced 3
+    regPC = PC + 1; //It had the last byte of the last instr
 }
 
 void Cpu::SBC_execute(uint8_t operand) {
     // Subtract with carry
     // A,Z,C,N = A-M-(1-C)
 
-    int16_t result = (int16_t)regA - (int16_t)operand - (int16_t)(1 - regP.C);
+    int8_t result = regA - operand - (1 - regP.C);
+
     bool signResult, signRegA, signOperand;
 
     signResult = (result >> 7) & 1; //Mask to eliminate the carry
-    signRegA = regA >> 7;
-    signOperand = operand >> 7;
+    signRegA = (regA >> 7) & 1;
+    signOperand = (operand >> 7) & 1;
+
+    regP.Z = result == 0;
+    regP.C = regA >= operand;
+    regP.V = ((signRegA != signOperand) && (signResult != signRegA));
+    regP.N = signResult;
 
     regA = result;
-
-    regP.Z = (result & 0x00FF) == 0;
-    regP.C = result >> 8;
-    regP.V = ((signRegA == signOperand) && (signResult != signRegA));
-    regP.N = signResult;
 }
 
 void Cpu::SEC_execute() {
@@ -1219,9 +1237,7 @@ void Cpu::TYA_execute() {
 }
 
 void Cpu::NMI_execute() {
-    debug_dump(0);
     // Non-Maskable interrupt
-    cout << "NMI INTERRUPT" << endl;
 
     uint8_t lowPC, highPC;
     lowPC = regPC;
@@ -1237,8 +1253,8 @@ void Cpu::NMI_execute() {
 		(regP.C);
     
     //We push the PC and Processor Status into the stack
-    pushStack(lowPC);
     pushStack(highPC);
+    pushStack(lowPC);
     pushStack(procStat);
 
     //We set the PC to the interrupt vector
@@ -1252,7 +1268,8 @@ void Cpu::pushStack(uint8_t data) {
 
 uint8_t Cpu::pullStack() {
     regSP++;
-    return mem.read_byte(regSP);
+    uint8_t result = mem.read_byte(regSP);
+    return result;
 }
 
 void Cpu::debug_dump(uint8_t inst) {
@@ -1263,12 +1280,12 @@ void Cpu::debug_dump(uint8_t inst) {
     cout << "regPC = " << std::hex << (unsigned) regPC << endl;
     cout << "regSP = " << std::hex << (unsigned) regSP << endl;
     cout << "regP =" << endl;
-    cout << "    C = " << regP.C << endl;
-    cout << "    Z = " << regP.Z << endl;
-    cout << "    I = " << regP.I << endl;
-    cout << "    D = " << regP.D << endl;
-    cout << "    B = " << regP.B << endl;
-    cout << "    V = " << regP.V << endl;
+    cout << "    C = " << regP.C;
+    cout << "    Z = " << regP.Z;
+    cout << "    I = " << regP.I;
+    cout << "    D = " << regP.D;
+    cout << "    B = " << regP.B;
+    cout << "    V = " << regP.V;
     cout << "    N = " << regP.N << endl;
     cout << "cycles = " << clock->cycles << endl;
 }

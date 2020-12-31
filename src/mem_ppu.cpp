@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -7,13 +8,36 @@
 using namespace std;
 
 Mem_ppu::Mem_ppu() {
+    PPUCTRL = 0;
+    PPUADDR = 0;
+    PPUDATA = 0;
+    PPUSTATUS = 0;
+    OAMADDR = 0;
+    OAMDATA = 0;
+    ram = (unsigned char*) malloc(PPU_RAM_SIZE);
+    oam = (unsigned char*) malloc(256);
+    ppuaddr_ptr_hl = 0;
+    oamaddr_ptr_hl = 0;
+    ppuscroll_ptr_hl = 0;
+    in_vblank = false;
 }
 
 uint8_t Mem_ppu::read_byte(uint16_t addr) {
+    //Mirroring
+    if (addr > 0x2fff && addr < 0x3f00)
+	addr = addr - 0x1000;
+    else if (addr > 0x3f1f && addr < 0x4000)
+	addr = addr - 0x0020;
+
     return ram[addr];
 }
 
 uint16_t Mem_ppu::read_word(uint16_t addr) {
+    //Mirroring
+    if (addr > 0x2fff && addr < 0x3f00)
+	addr = addr - 0x1000;
+    else if (addr > 0x3f1f && addr < 0x4000)
+	addr = addr - 0x0020;
     uint16_t result;
     uint8_t lower, upper;
     lower = ram[addr&0xFFFE];
@@ -23,11 +47,15 @@ uint16_t Mem_ppu::read_word(uint16_t addr) {
 }
 
 void Mem_ppu::write_byte(uint16_t addr, uint8_t data) {
+    //Mirroring
+    if (addr > 0x2fff && addr < 0x3f00)
+	addr = addr - 0x1000;
+    else if (addr > 0x3f1f && addr < 0x4000)
+	addr = addr - 0x0020;
     ram[addr] = data;
 }
 
 void Mem_ppu::load_rom(char *name) {
-
     /*This rom loads .nes roms in iNES file format
     The iNES file format follows the following sections:
     
@@ -63,39 +91,20 @@ void Mem_ppu::load_rom(char *name) {
     /* 3. PRG ROM data */
     char prg_rom[PRG_ROM_SIZE*x];
     rom.read(prg_rom, PRG_ROM_SIZE*x);
-    cout << PRG_ROM_SIZE*x << endl;
 
     /* 4. CHR ROM data */
     rom.read((char *)ram, CHR_ROM_SIZE*y);
-
-    for (int i = 0; i<NAMETABLE_SIZE; ++i) {
-	if (i < 256)
-	    ram[0x2000 + i] = i;
-	else ram[0x2000 + i] = 255;
-    }
-
-    ram[0x3f00] = 63;
-    ram[0x3f01] = 127;
-    ram[0x3f02] = 191;
-    ram[0x3f03] = 255;
-    ram[0x3f04] = 63;
-    ram[0x3f05] = 127;
-    ram[0x3f06] = 191;
-    ram[0x3f07] = 255;
-    ram[0x3f08] = 63;
-    ram[0x3f09] = 127;
-    ram[0x3f0a] = 191;
-    ram[0x3f0b] = 255;
-    ram[0x3f0c] = 63;
-    ram[0x3f0d] = 127;
-    ram[0x3f0e] = 191;
-    ram[0x3f0f] = 255;
-
     rom.close();
+}
+
+uint8_t Mem_ppu::read_PPUCTRL() {
+    return PPUCTRL;
 }
 
 void Mem_ppu::write_PPUCTRL(uint8_t data) {
     PPUCTRL = data;
+    //Lower bits of ppustatus are the last written bits
+    PPUSTATUS = (PPUSTATUS & 0xe0) | (data & 0x1f);
 }
 
 void Mem_ppu::write_PPUADDR(uint8_t addr) {
@@ -110,12 +119,38 @@ void Mem_ppu::write_PPUADDR(uint8_t addr) {
 	PPUADDR |= (addr & 0x00FF);
 	ppuaddr_ptr_hl = 0;
     }
+    //Lower bits of ppustatus are the last written bits
+    PPUSTATUS = (PPUSTATUS & 0xe0) | (addr & 0x1f);
+}
+
+uint8_t Mem_ppu::read_PPUSTATUS() {
+    uint8_t result = PPUSTATUS;
+    //Clear the vblank status bit if we are not in vblank
+    if (!in_vblank)
+	PPUSTATUS = PPUSTATUS & 0x7f;
+    //Clear the address latch
+    PPUADDR = 0;
+    ppuaddr_ptr_hl = 0;
+    ppuscroll_ptr_hl = 0;
+    oamaddr_ptr_hl = 0;
+    return result;
 }
 
 uint8_t Mem_ppu::read_PPUDATA() {
-    uint8_t result = PPUDATA;
-    PPUDATA = ram[PPUADDR];
-    if (((PPUCTRL >> 1) & 1) == 0) {
+    uint8_t result;
+    if (PPUADDR > 0x3eff) {
+	//When ppuaddr is at the pallettes, read normally
+	result = read_byte(PPUADDR);
+	PPUDATA = result;
+    }
+    else {
+	//If not, then read the internal buffer
+	result = PPUDATA;
+	PPUDATA = read_byte(PPUADDR);
+    }
+    //The internal buffer updates anyways
+
+    if (((PPUCTRL >> 2) & 1) == 0) {
 	    PPUADDR += 1;
     }
     else {
@@ -125,5 +160,78 @@ uint8_t Mem_ppu::read_PPUDATA() {
 }
 
 void Mem_ppu::write_PPUDATA(uint8_t data) {
-    ram[PPUADDR] = data;
+    write_byte(PPUADDR, data);
+    if (((PPUCTRL >> 2) & 1) == 0) {
+	    PPUADDR += 1;
+    }
+    else {
+	    PPUADDR += 32;
+    }
+    //Lower bits of ppustatus are the last written bits
+    PPUSTATUS = (PPUSTATUS & 0xe0) | (data & 0x1f);
+}
+
+void Mem_ppu::write_OAMADDR(uint8_t addr) {
+    if (oamaddr_ptr_hl == 0) {
+	//Writing high byte
+	OAMADDR = (addr << 8);
+	OAMADDR &= 0x3FFF; //Upper adddresses are mirrored
+	oamaddr_ptr_hl = 1;
+    }
+    else {
+	//Writing low byte
+	OAMADDR |= (addr & 0x00FF);
+	oamaddr_ptr_hl = 0;
+    }
+    //Lower bits of ppustatus are the last written bits
+    PPUSTATUS = (PPUSTATUS & 0xe0) | (addr & 0x1f);
+}
+
+uint8_t Mem_ppu::read_OAMDATA() {
+    uint8_t result = ram[OAMADDR];
+    if (!in_vblank)
+	OAMADDR = OAMADDR+1;
+    return result;
+}
+
+void Mem_ppu::write_OAMDATA(uint8_t data) {
+    ram[OAMADDR] = data;
+    OAMADDR = OAMADDR+1;
+}
+
+void Mem_ppu::write_OAMDMA(uint8_t data[256]) {
+    for (int i = 0; i<256; ++i) {
+	oam[i] = data[i];
+    }
+}
+
+uint8_t Mem_ppu::read_PPUMASK() {
+    uint8_t result = PPUMASK;
+    return result;
+}
+
+void Mem_ppu::write_PPUMASK(uint8_t data) {
+    PPUMASK = data;
+}
+
+void Mem_ppu::write_PPUSCROLL(uint8_t data) {
+    if (ppuscroll_ptr_hl == 0) {
+	//Writing high byte
+	PPUSCROLL = (data << 8);
+	ppuscroll_ptr_hl = 1;
+    }
+    else {
+	//Writing low byte
+	PPUSCROLL |= (data & 0x00FF);
+	ppuscroll_ptr_hl = 0;
+    }
+    //Lower bits of ppustatus are the last written bits
+    PPUSTATUS = (PPUSTATUS & 0xe0) | (data & 0x1f);
+}
+
+
+void Mem_ppu::vblank_end() {
+    //Clear vblank 
+    PPUSTATUS = PPUSTATUS & 0x7f;
+    in_vblank = false;
 }

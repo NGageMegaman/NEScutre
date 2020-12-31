@@ -20,4 +20,6 @@ class Mem {
 	void load_rom(char *name);
 	unsigned char ram[RAM_SIZE];
 	Mem_ppu *mem_ppu;
+	uint8_t controller_latch;
+	uint8_t controller_read_latch;
 };

@@ -16,6 +16,8 @@ class Ppu {
 	void drawPixel(Display *di, Window wi, GC gc, int x, int y, int color);
 	void draw(int n_scanline);
 	void drawSprites(int n_scanline);
+	void drawScreen();
+	void checkSprite0Hit(int n_scanline);
 	void vblank();
 	void initColors();
 	Cpu *cpu;

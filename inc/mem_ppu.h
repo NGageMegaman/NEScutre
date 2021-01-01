@@ -31,6 +31,7 @@ class Mem_ppu {
 	void vblank_end();
 	unsigned char *ram;
 	unsigned char *oam;
+	uint32_t vram[61440];
 
 	uint8_t PPUCTRL;
 	uint16_t PPUADDR;

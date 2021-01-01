@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <unistd.h>
-#include <ncurses.h>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
@@ -124,9 +123,9 @@ void Mem::write_byte(uint16_t addr, uint8_t data) {
 	    	    controller_inputs &= 0xfe;
 	    	else if (a == 53)  //x_key
 	    	    controller_inputs &= 0xfd;
-	    	else if (a == 36)  //enter_key
-	    	    controller_inputs &= 0xfb;
 	    	else if (a == 22)  //backspace_key
+	    	    controller_inputs &= 0xfb;
+	    	else if (a == 36)  //enter_key
 	    	    controller_inputs &= 0xf7;
 	    	else if (a == 111)  //up_key
 	    	    controller_inputs &= 0xef;
@@ -143,9 +142,9 @@ void Mem::write_byte(uint16_t addr, uint8_t data) {
 	    	    controller_inputs |= 0x01;
 	    	else if (a == 53)  //x_key
 	    	    controller_inputs |= 0x02;
-	    	else if (a == 36)  //enter_key
-	    	    controller_inputs |= 0x04;
 	    	else if (a == 22)  //backspace_key
+	    	    controller_inputs |= 0x04;
+	    	else if (a == 36)  //enter_key
 	    	    controller_inputs |= 0x08;
 	    	else if (a == 111)  //up_key
 	    	    controller_inputs |= 0x10;

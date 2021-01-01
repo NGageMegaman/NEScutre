@@ -535,7 +535,7 @@ uint32_t Cpu::read_operand_imm(addr_mode_t *addr_mode) {
 }
 
 uint32_t Cpu::read_operand_absolute(addr_mode_t *addr_mode, uint8_t opcode) {
-    uint16_t operand;
+    uint8_t operand;
     uint8_t high, low;
     low = mem.read_byte(regPC + 0x0001);
     high = mem.read_byte(regPC + 0x0002);
@@ -549,7 +549,7 @@ uint32_t Cpu::read_operand_absolute(addr_mode_t *addr_mode, uint8_t opcode) {
 	operand = mem.read_byte(address);
     else
 	operand = 0;
-    return address << 16 | operand;
+    return (address << 16) | operand;
 }
 
 uint32_t Cpu::read_operand_indirect(addr_mode_t *addr_mode) {
@@ -1130,8 +1130,8 @@ void Cpu::SBC_execute(uint8_t operand) {
     signRegA = (regA >> 7) & 1;
     signOperand = (operand >> 7) & 1;
 
-    regP.Z = result == 0;
     regP.C = regA >= operand;
+    regP.Z = result == 0;
     regP.V = ((signRegA != signOperand) && (signResult != signRegA));
     regP.N = signResult;
 

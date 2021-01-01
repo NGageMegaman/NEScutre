@@ -35,6 +35,9 @@ int main() {
 	    nes_cpu.execute();
 	    if (nes_clock.cycles >= next_vblank) {
 		//usleep(400000);
+		for (int i = 0; i<240; ++i)
+		    nes_ppu.drawSprites(i);
+		nes_ppu.drawScreen();
 		count++;
 		n_scanline = 0;
 	        next_vblank += 89342;
@@ -50,7 +53,7 @@ int main() {
 	    //We assume the first sprite always does s0h
 	    if (n_scanline != 0xee && nes_clock.cycles >= next_sprite) {
 		nes_ppu.draw(n_scanline);
-		nes_ppu.drawSprites(n_scanline);
+		nes_ppu.checkSprite0Hit(n_scanline);
 		next_sprite = next_sprite + 340;
 		n_scanline++;
 	    }

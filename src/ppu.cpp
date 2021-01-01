@@ -30,6 +30,17 @@ void Ppu::drawPixel(Display *di, Window wi, GC gc, int x, int y, int color) {
     XDrawPoint(di, wi, gc, x, y);
 }
 
+void Ppu::checkSprite0Hit(int n_scanline) {
+    int pos_y = mem_ppu->oam[0];
+    
+    if (n_scanline == pos_y) {
+        if (pos_y == n_scanline) {
+	    mem_ppu->PPUSTATUS |= 0x40;
+	}
+    }
+}
+	
+
 void Ppu::drawSprites(int n_scanline) {
     //Select what events the window will listen to
     uint8_t index, attribute, palette;
@@ -46,8 +57,6 @@ void Ppu::drawSprites(int n_scanline) {
 	    pos_x     = mem_ppu->oam[(i*4) + 3];
 
 	    if (n_scanline == pos_y) {
-		if (i == 0)
-		    mem_ppu->PPUSTATUS |= 0x40;
 
 	    	palette = attribute & 3;
 	    	priority = (attribute >> 5) & 1;
@@ -75,7 +84,7 @@ void Ppu::drawSprites(int n_scanline) {
 	    	                (((mem_ppu->ram[line_addr])>>h_offset)&1) +
 	    	               ((((mem_ppu->ram[line_addr+8])>>h_offset)&1)<<1);
             	            
-	    	            char color = mem_ppu->ram[0x3f10 + (palette << 2) + bitplane];
+	    	            unsigned char color = mem_ppu->ram[0x3f10 + (palette << 2) + bitplane];
 	    	    	    uint8_t tmp_pos_x;
 	    	    	    uint8_t tmp_pos_y;
 	    	    	    if (flip_h)
@@ -87,8 +96,15 @@ void Ppu::drawSprites(int n_scanline) {
 	    	    	    else
 	    	    	        tmp_pos_y = pos_y + i2;
 
-	    	    	    if (bitplane != 0)
-	    	    	       drawPixel(di, wi, gc, tmp_pos_x, tmp_pos_y, colors[color]);
+			    int position = (tmp_pos_y*256) + tmp_pos_x;
+			    if (bitplane != 0 && position < 61440) {
+				if (priority == 0) {
+				    mem_ppu->vram[position] = colors[color];
+				}
+				else if (mem_ppu->vram[position] == colors[mem_ppu->ram[0x3f00]]) {
+				    mem_ppu->vram[position] = colors[color];
+				}
+			    }
 	    	        }
 	    	    }
 	    	}
@@ -105,7 +121,7 @@ void Ppu::drawSprites(int n_scanline) {
 	    		            (((mem_ppu->ram[line_addr])>>h_offset)&1) +
 	    		           ((((mem_ppu->ram[line_addr+8])>>h_offset)&1)<<1);
             		            
-	    		        char color = mem_ppu->ram[0x3f00 + (palette << 2) + 0x04 + bitplane];
+	    		        unsigned char color = mem_ppu->ram[0x3f00 + (palette << 2) + 0x04 + bitplane];
 			        uint8_t tmp_pos_x;
 			        uint8_t tmp_pos_y;
 	    	    	        if (flip_h)
@@ -117,8 +133,16 @@ void Ppu::drawSprites(int n_scanline) {
 	    	    	        else
 				    tmp_pos_y = pos_y + i2;
 
-				if (bitplane != 0)
-				    drawPixel(di, wi, gc, tmp_pos_x, tmp_pos_y, colors[color]);
+				int position = (tmp_pos_y*256) + tmp_pos_x;
+
+			    	if (bitplane != 0 && position < 61440) {
+			    	    if (priority == 0) {
+					mem_ppu->vram[position] = colors[color];
+			    	    }
+			    	    else if (mem_ppu->vram[position] == colors[mem_ppu->ram[0x3f00]]) {
+					mem_ppu->vram[position] = colors[color];
+			    	    }
+			    	}
 	    		    }
 	    		}
 	    	    }
@@ -138,7 +162,7 @@ void Ppu::draw(int n_scanline) {
     unsigned int line_addr, h_offset;
     unsigned int nt_off;
     unsigned int patterntable;
-    int pos_x, pos_y, sc_off_x, sc_off_y, sc_tile_off_x, sc_tile_off_y;
+    int pos_x, pos_y, sc_off_x, sc_off_y;
     //int a = XNextEvent(di, &ev);
     //if (ev.type == Expose) {
     //BG enable
@@ -235,14 +259,20 @@ void Ppu::draw(int n_scanline) {
 			    if (bitplane == 0) attribute = 0;
 	    	    	    //We fetch the color value
 	    	            unsigned char color = mem_ppu->ram[0x3f00 + attribute];
-
-			    drawPixel(di, wi, gc, pos_x, pos_y, colors[color]);
+			    int position = (pos_y*256)+pos_x;
+			    if (position < 61440)
+				mem_ppu->vram[position] = colors[color];
 			}
 		    }
 	    	}
 	    }
 	}
     }
+}
+
+void Ppu::drawScreen() {
+    for (int i = 0; i<61440; ++i)
+	drawPixel(di, wi, gc, (i%256), (i/256), mem_ppu->vram[i]);
 }
 
 void Ppu::vblank() {

@@ -32,6 +32,7 @@ uint8_t Mem::read_byte(uint16_t addr) {
     if (addr > 0x2007 && addr < 0x4000) {
 	addr = (addr & 7) + 0x2000;
     }
+
     if (addr == 0x2000)
 	return mem_ppu->read_PPUCTRL();
     else if (addr == 0x2001)
@@ -41,7 +42,6 @@ uint8_t Mem::read_byte(uint16_t addr) {
     else if (addr == 0x2007)
         return mem_ppu->read_PPUDATA();
     else if (addr == 0x4016) {
-	cout << "READ CONTROLLER" << endl;
 	uint8_t result = controller_latch & 1;
 	controller_latch = controller_latch >> 1;
 	controller_latch |= 0x80;
@@ -87,6 +87,7 @@ void Mem::write_byte(uint16_t addr, uint8_t data) {
     if (addr > 0x2007 && addr < 0x4000) {
 	addr = (addr & 7) + 0x2000;
     }
+    
     if (addr == 0x2000)
 	mem_ppu->write_PPUCTRL(data);
     else if (addr == 0x2001)
@@ -113,35 +114,50 @@ void Mem::write_byte(uint16_t addr, uint8_t data) {
     else if (addr == 0x4016 && data == 1) {
 	controller_read_latch = 0;
 	controller_latch = 0;
-	initscr();
-	nocbreak();
-	cbreak();
-	echo();
-	noecho();
-	nodelay(stdscr, true);
-	int keys[8];
-	int n_keys = 0;
-	int a = getch();
-	while (a != -1) {
-	    if (a == 122)       //a_key
-		controller_latch |= 0x01;
-	    else if (a == 120)  //b_key
-		controller_latch |= 0x02;
-	    else if (a == 110)  //start_key
-		controller_latch |= 0x04;
-	    else if (a == 109)  //select_key
-		controller_latch |= 0x08;
-	    else if (a == 105)  //i_key
-		controller_latch |= 0x10;
-	    else if (a == 107)  //k_key
-		controller_latch |= 0x20;
-	    else if (a == 106)  //j_key
-		controller_latch |= 0x40;
-	    else if (a == 109)  //l_key
-		controller_latch |= 0x80;
-	    a = getch();
+	XEvent event;
+	while (XPending(di)) {
+	    XNextEvent(di, &event);
+	    int a;
+	    if (event.type == KeyRelease) {
+		a = event.xkey.keycode;
+		if (a == 52)       //z_key
+	    	    controller_inputs &= 0xfe;
+	    	else if (a == 53)  //x_key
+	    	    controller_inputs &= 0xfd;
+	    	else if (a == 36)  //enter_key
+	    	    controller_inputs &= 0xfb;
+	    	else if (a == 22)  //backspace_key
+	    	    controller_inputs &= 0xf7;
+	    	else if (a == 111)  //up_key
+	    	    controller_inputs &= 0xef;
+	    	else if (a == 116)  //down_key
+	    	    controller_inputs &= 0xdf;
+	    	else if (a == 113)  //left_key
+	    	    controller_inputs &= 0xbf;
+	    	else if (a == 114)  //right_key
+	    	    controller_inputs &= 0x7f;
+	    }
+	    if (event.type == KeyPress) {
+		a = event.xkey.keycode;
+		if (a == 52)       //z_key
+	    	    controller_inputs |= 0x01;
+	    	else if (a == 53)  //x_key
+	    	    controller_inputs |= 0x02;
+	    	else if (a == 36)  //enter_key
+	    	    controller_inputs |= 0x04;
+	    	else if (a == 22)  //backspace_key
+	    	    controller_inputs |= 0x08;
+	    	else if (a == 111)  //up_key
+	    	    controller_inputs |= 0x10;
+	    	else if (a == 116)  //down_key
+	    	    controller_inputs |= 0x20;
+	    	else if (a == 113)  //left_key
+	    	    controller_inputs |= 0x40;
+	    	else if (a == 114)  //right_key
+	    	    controller_inputs |= 0x80;
+	    }
 	}
-	endwin();
+	controller_latch = controller_inputs;
     }
     else if (addr == 0x4016 && data == 0) {
 	controller_read_latch = 1;

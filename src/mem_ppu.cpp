@@ -28,6 +28,15 @@ uint8_t Mem_ppu::read_byte(uint16_t addr) {
 	addr = addr - 0x1000;
     else if (addr > 0x3f1f && addr < 0x4000)
 	addr = addr - 0x0020;
+    //Pallette mirroring
+    if (addr == 0x3f10)
+	addr = 0x3f00;
+    else if (addr == 0x3f14)
+	addr = 0x3f04;
+    else if (addr == 0x3f18)
+	addr = 0x3f08;
+    else if (addr == 0x3f1c)
+	addr = 0x3f1c;
 
     return ram[addr];
 }
@@ -38,6 +47,15 @@ uint16_t Mem_ppu::read_word(uint16_t addr) {
 	addr = addr - 0x1000;
     else if (addr > 0x3f1f && addr < 0x4000)
 	addr = addr - 0x0020;
+    //Pallette mirroring
+    if (addr == 0x3f10)
+	addr = 0x3f00;
+    else if (addr == 0x3f14)
+	addr = 0x3f04;
+    else if (addr == 0x3f18)
+	addr = 0x3f08;
+    else if (addr == 0x3f1c)
+	addr = 0x3f1c;
     uint16_t result;
     uint8_t lower, upper;
     lower = ram[addr&0xFFFE];
@@ -52,6 +70,15 @@ void Mem_ppu::write_byte(uint16_t addr, uint8_t data) {
 	addr = addr - 0x1000;
     else if (addr > 0x3f1f && addr < 0x4000)
 	addr = addr - 0x0020;
+    //Pallette mirroring
+    if (addr == 0x3f10)
+	addr = 0x3f00;
+    else if (addr == 0x3f14)
+	addr = 0x3f04;
+    else if (addr == 0x3f18)
+	addr = 0x3f08;
+    else if (addr == 0x3f1c)
+	addr = 0x3f1c;
     ram[addr] = data;
 }
 

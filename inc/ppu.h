@@ -20,7 +20,6 @@ class Ppu {
 	void initColors();
 	Cpu *cpu;
 	Mem_ppu *mem_ppu;
-    private:
 	Display *di;
 	int sc;
 	Window ro, wi;

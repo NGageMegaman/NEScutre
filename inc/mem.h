@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <X11/Xlib.h>
 #include <string>
 #include <vector>
 #ifndef MEM_PPU_H
@@ -22,4 +23,6 @@ class Mem {
 	Mem_ppu *mem_ppu;
 	uint8_t controller_latch;
 	uint8_t controller_read_latch;
+	uint8_t controller_inputs;
+	Display *di;
 };

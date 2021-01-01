@@ -30,6 +30,7 @@ int main() {
     Ppu nes_ppu;
     nes_ppu.cpu = &nes_cpu;
     nes_ppu.mem_ppu = &nes_mem_ppu;
+    nes_cpu.mem.di = nes_ppu.di;
     while(1) {
 	    nes_cpu.execute();
 	    if (nes_clock.cycles >= next_vblank) {

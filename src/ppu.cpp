@@ -16,9 +16,11 @@ Ppu::Ppu() {
     sc = DefaultScreen(di);
     ro = DefaultRootWindow(di);
     wi = XCreateSimpleWindow(di, ro, x, y, width, height, border_width, BlackPixel(di, sc), WhitePixel(di, sc));
+    XSelectInput(di, wi, KeyPressMask | KeyReleaseMask | ExposureMask);
+    XAutoRepeatOff(di);
     gc = XCreateGC(di, ro, 0, NULL);
     XMapWindow(di, wi); //Make window visible
-    XStoreName(di, wi, "Window");
+    XStoreName(di, wi, "NEScutre");
     initColors();
 }
 
@@ -30,8 +32,6 @@ void Ppu::drawPixel(Display *di, Window wi, GC gc, int x, int y, int color) {
 
 void Ppu::drawSprites(int n_scanline) {
     //Select what events the window will listen to
-    XSelectInput(di, wi, ExposureMask);
-    //XEvent ev;
     uint8_t index, attribute, palette;
     int pos_x, pos_y;
     unsigned int patterntable, line_addr, h_offset, large_sprite;
@@ -75,7 +75,7 @@ void Ppu::drawSprites(int n_scanline) {
 	    	                (((mem_ppu->ram[line_addr])>>h_offset)&1) +
 	    	               ((((mem_ppu->ram[line_addr+8])>>h_offset)&1)<<1);
             	            
-	    	            char color = mem_ppu->ram[0x3f00 + palette + 0x04 + bitplane];
+	    	            char color = mem_ppu->ram[0x3f10 + (palette << 2) + bitplane];
 	    	    	    uint8_t tmp_pos_x;
 	    	    	    uint8_t tmp_pos_y;
 	    	    	    if (flip_h)
@@ -105,7 +105,7 @@ void Ppu::drawSprites(int n_scanline) {
 	    		            (((mem_ppu->ram[line_addr])>>h_offset)&1) +
 	    		           ((((mem_ppu->ram[line_addr+8])>>h_offset)&1)<<1);
             		            
-	    		        char color = mem_ppu->ram[0x3f00 + palette + 0x04 + bitplane];
+	    		        char color = mem_ppu->ram[0x3f00 + (palette << 2) + 0x04 + bitplane];
 			        uint8_t tmp_pos_x;
 			        uint8_t tmp_pos_y;
 	    	    	        if (flip_h)
@@ -130,7 +130,6 @@ void Ppu::drawSprites(int n_scanline) {
 
 void Ppu::draw(int n_scanline) {
     //Select what events the window will listen to
-    XSelectInput(di, wi, ExposureMask);
     //XEvent ev;
     unsigned int nametable;
     unsigned int idx = 0;
@@ -233,6 +232,7 @@ void Ppu::draw(int n_scanline) {
 	    	            }
 	    	    	    //We compute the final pallette index with the bitplane value
 	    	            attribute = ((attribute << 2) | bitplane) & 0x000f;
+			    if (bitplane == 0) attribute = 0;
 	    	    	    //We fetch the color value
 	    	            unsigned char color = mem_ppu->ram[0x3f00 + attribute];
 

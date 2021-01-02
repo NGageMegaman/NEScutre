@@ -632,15 +632,23 @@ uint32_t Cpu::read_operand_absolute_indexed_y(addr_mode_t *addr_mode) {
 void Cpu::ADC_execute(uint8_t operand) {
     // Add with carry
     // A,Z,C,N = A+M+C
-    uint8_t result = regA + operand + (uint8_t)regP.C;
+    uint8_t result_part = regA + operand;
     bool signResult, signRegA, signOperand;
+    bool isCarry = false;
+
+    if (result_part < regA) isCarry = true;
+    
+    uint8_t result = result_part + regP.C;
+
+    if (result < result_part) isCarry = true;
+    
 
     signResult = (result >> 7) & 1; //Mask to eliminate the carry
     signRegA = (regA >> 7) & 1;
     signOperand = (operand >> 7) & 1;
 
     regP.Z = result == 0;
-    regP.C = (result < regA) || (result < operand);
+    regP.C = isCarry;
     regP.V = ((signRegA == signOperand) && (signResult != signRegA));
     regP.N = signResult;
 
@@ -662,12 +670,12 @@ void Cpu::ASL_mem_execute(uint16_t address, uint8_t operand) {
     // Arithmetic shift left (Memory content)
     // M,Z,C,N = M*2
 
-    uint16_t result = operand << 1;
+    uint8_t result = operand << 1;
 
-    mem.write_byte(address, (uint8_t) operand);
+    mem.write_byte(address, result);
 
-    regP.Z = (result & 0x00FF) == 0;
-    regP.C = result >> 8;
+    regP.Z = result == 0;
+    regP.C = (operand >> 7) & 1;
     regP.N = (result >> 7) & 1;
 }
 
@@ -675,13 +683,13 @@ void Cpu::ASL_A_execute() {
     // Arithmetic shift left (Accumulator content)
     // A,Z,C,N = A*2
 
-    uint16_t result = regA << 1;
+    uint8_t result = regA << 1;
 
-    regA = (uint8_t) result;
-
-    regP.Z = regA == 0;
-    regP.C = result >> 8;
+    regP.Z = result == 0;
+    regP.C = (regA >> 7) & 1;
     regP.N = (result >> 7) & 1;
+
+    regA = result;
 }
 
 void Cpu::BCC_execute(uint16_t address) {
@@ -929,7 +937,7 @@ void Cpu::JSR_execute(uint16_t address) {
     //Jump to subroutine
 
     uint16_t returnAddr = regPC - 1; //Last byte of the instruction
-    pushStack(returnAddr >> 8); //high
+    pushStack((returnAddr >> 8) & 0x00ff); //high
     pushStack(returnAddr & 0x00ff); //low
     regPC = address;
 }
@@ -968,24 +976,24 @@ void Cpu::LSR_mem_execute(uint16_t address, uint8_t operand) {
     // Logical shift right (Memory content)
     // M,Z,C,N = M/2
 
-    uint8_t result = operand >> 1;
+    uint8_t result = (operand >> 1) & 0x7f;
 
     mem.write_byte(address, result);
 
     regP.Z = result == 0;
     regP.C = operand & 1;
-    regP.N = result >> 7;
+    regP.N = (result >> 7) & 1;
 }
 
 void Cpu::LSR_A_execute() {
     // Logical shift right (Accumulator content)
     // A,Z,C,N = A/2
 
-    uint8_t result = regA >> 1;
+    uint8_t result = (regA >> 1) & 0x7f;
 
     regP.Z = result == 0;
     regP.C = regA & 1;
-    regP.N = result >> 7;
+    regP.N = (result >> 7) & 1;
 
     regA = result;
 }
@@ -1122,17 +1130,26 @@ void Cpu::SBC_execute(uint8_t operand) {
     // Subtract with carry
     // A,Z,C,N = A-M-(1-C)
 
-    int8_t result = regA - operand - (1 - regP.C);
+    uint8_t noperand = ~operand;
+    uint8_t part_result = regA + noperand;
 
     bool signResult, signRegA, signOperand;
+    bool isCarry = false;
+
+    if (part_result < regA) isCarry = true;
+
+    uint8_t result = part_result + regP.C;
+
+    if (result < part_result) isCarry = true;
 
     signResult = (result >> 7) & 1; //Mask to eliminate the carry
     signRegA = (regA >> 7) & 1;
-    signOperand = (operand >> 7) & 1;
+    signOperand = (noperand >> 7) & 1;
 
-    regP.C = regA >= operand;
+    //regP.C = regA >= operand;
+    regP.C = isCarry;
     regP.Z = result == 0;
-    regP.V = ((signRegA != signOperand) && (signResult != signRegA));
+    regP.V = ((signRegA == signOperand) && (signResult != signRegA));
     regP.N = signResult;
 
     regA = result;

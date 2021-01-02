@@ -24,12 +24,6 @@ Ppu::Ppu() {
     initColors();
 }
 
-void Ppu::drawPixel(Display *di, Window wi, GC gc, int x, int y, int color) {
-    //Prepare the window for drawing
-    XSetForeground(di, gc, color);
-    XDrawPoint(di, wi, gc, x, y);
-}
-
 void Ppu::checkSprite0Hit(int n_scanline) {
     int pos_y = mem_ppu->oam[0];
     
@@ -271,8 +265,10 @@ void Ppu::draw(int n_scanline) {
 }
 
 void Ppu::drawScreen() {
-    for (int i = 0; i<61440; ++i)
-	drawPixel(di, wi, gc, (i%256), (i/256), mem_ppu->vram[i]);
+    for (int i = 0; i<61440; ++i) {
+	XSetForeground(di, gc, mem_ppu->vram[i]);
+	XDrawPoint(di, wi, gc, (i%256), (i/256));
+    }
 }
 
 void Ppu::vblank() {

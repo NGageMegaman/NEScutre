@@ -13,7 +13,6 @@ using namespace std;
 class Ppu {
     public:
 	Ppu();
-	void drawPixel(Display *di, Window wi, GC gc, int x, int y, int color);
 	void draw(int n_scanline);
 	void drawSprites(int n_scanline);
 	void drawScreen();
